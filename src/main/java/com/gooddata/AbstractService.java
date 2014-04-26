@@ -3,6 +3,7 @@
  */
 package com.gooddata;
 
+import com.gooddata.project.Project;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -51,19 +52,11 @@ public abstract class AbstractService {
         this.restTemplate = notNull(restTemplate, "restTemplate");
     }
 
-    public <T> T poll(URI pollingUri, Class<T> cls) {
+    public <T> T poll(String pollingUri, Class<T> cls) {
         return poll(pollingUri, new StatusOkConditionCallback(), cls);
     }
 
-    public <T> T poll(String pollingUri, Class<T> cls) {
-        return poll(URI.create(pollingUri), new StatusOkConditionCallback(), cls);
-    }
-
     public <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass) {
-        return poll(URI.create(pollingUri), condition, returnClass);
-    }
-
-    public <T> T poll(URI pollingUri, ConditionCallback condition, Class<T> returnClass) {
         int attempt = 0;
 
         while (true) {
@@ -84,10 +77,6 @@ public abstract class AbstractService {
                 throw new GoodDataException("I/O error occurred during HTTP response extraction", e);
             }
 
-            if (attempt >= MAX_ATTEMPTS - 1) {
-                throw new GoodDataException(format("Max number of attempts (%s) exceeded", MAX_ATTEMPTS));
-            }
-
             try {
                 Thread.sleep(WAIT_BEFORE_RETRY_IN_MILLIS);
             } catch (InterruptedException e) {
@@ -95,6 +84,10 @@ public abstract class AbstractService {
             }
             attempt++;
         }
+    }
+
+    protected PollFuture<Project> createPollFuture(final String pollingUri, final ConditionCallback condition, final Class<Project> resultClass) {
+        return new PollFuture<>(this, pollingUri, condition, resultClass);
     }
 
     protected <T> T extractData(ClientHttpResponse response, Class<T> cls) throws IOException {
