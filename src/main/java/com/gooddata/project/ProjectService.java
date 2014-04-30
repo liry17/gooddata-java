@@ -75,4 +75,14 @@ public class ProjectService extends AbstractService {
         notEmpty(id, "id");
         return getProjectByUri(Project.PROJECT_TEMPLATE.expand(id).toString());
     }
+
+    public Collection<ProjectTemplate> getProjectTemplates(Project project) {
+        notNull(project, "project");
+        try {
+            final ProjectTemplates templates = restTemplate.getForObject(ProjectTemplate.URI, ProjectTemplates.class, project.getId());
+            return templates.getTemplatesInfo();
+        } catch (GoodDataRestException | RestClientException e) {
+            throw new GoodDataException("Unable to get project templates", e);
+        }
+    }
 }

@@ -4,6 +4,7 @@
 package com.gooddata;
 
 import com.gooddata.account.AccountService;
+import com.gooddata.connectors.ConnectorsService;
 import com.gooddata.dataset.DatasetService;
 import com.gooddata.gdc.DataStoreService;
 import com.gooddata.gdc.GdcService;
@@ -48,6 +49,7 @@ public class GoodData {
     private final DataStoreService dataStoreService;
     private final DatasetService datasetService;
     private final ReportService reportService;
+    private final ConnectorsService connectorsService;
 
     public GoodData(String login, String password) {
         this(HOSTNAME, login, password);
@@ -69,6 +71,7 @@ public class GoodData {
         dataStoreService = new DataStoreService(httpClientBuilder, gdcService, login, password);
         datasetService = new DatasetService(restTemplate, dataStoreService);
         reportService = new ReportService(restTemplate);
+        connectorsService = new ConnectorsService(restTemplate, projectService);
     }
 
     private RestTemplate createRestTemplate(String hostname, String login, String password, HttpClientBuilder httpClientBuilder) {
@@ -136,4 +139,7 @@ public class GoodData {
         return reportService;
     }
 
+    public ConnectorsService getConnectorsService() {
+        return connectorsService;
+    }
 }

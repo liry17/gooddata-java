@@ -29,8 +29,11 @@ public class Project {
     private Links links;
 
     public Project(String title, String authorizationToken) {
-        content = new Content(authorizationToken);
-        meta = new Meta(title);
+        this(new Content(authorizationToken), new Meta(title), null);
+    }
+
+    public Project(String title, String authorizationToken, String projectTemplate) {
+        this(new Content(authorizationToken), new Meta(title, projectTemplate), null);
     }
 
     @JsonCreator
@@ -77,11 +80,25 @@ public class Project {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
     public static class Meta {
-        private @JsonProperty String title;
+        private String title;
+        private String projectTemplate;
+
+        public Meta(final String title, final String projectTemplate) {
+            this.title = title;
+            this.projectTemplate = projectTemplate;
+        }
 
         @JsonCreator
         public Meta(@JsonProperty("title") String title) {
             this.title = title;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getProjectTemplate() {
+            return projectTemplate;
         }
     }
 
