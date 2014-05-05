@@ -61,4 +61,8 @@ public class ReportService extends AbstractService {
 
         return restTemplate.postForObject(EXPORTING_URI, root, UriResponse.class).getUri();
     }
+
+    public String download(String uri) {
+        return restTemplate.getForObject(uri, String.class);
+    }
 }
