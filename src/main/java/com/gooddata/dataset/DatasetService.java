@@ -18,10 +18,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static com.gooddata.Validate.notEmpty;
 import static com.gooddata.Validate.notNull;
+import static java.util.Collections.emptyMap;
 
 /**
  */
@@ -104,5 +107,18 @@ public class DatasetService extends AbstractService {
         notEmpty(datasetId, "datasetId");
         notNull(dataset, "dataset");
         loadDataset(project, getDatasetManifest(project, datasetId), dataset);
+    }
+
+    public Map<String, String> listDatasets(Project project) {
+        notNull(project, "project");
+        final Datasets result = restTemplate.getForObject(Datasets.URI, Datasets.class, project.getId());
+        if (result == null || result.getLinks() == null) {
+            return emptyMap();
+        }
+        final Map<String, String> datasets = new LinkedHashMap<>(result.getLinks().size());
+        for (Datasets.Link link: result.getLinks()) {
+            datasets.put(link.getIdentifier(), link.getTitle());
+        }
+        return datasets;
     }
 }
