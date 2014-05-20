@@ -3,12 +3,12 @@
  */
 package com.gooddata;
 
-import com.gooddata.project.Project;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.HttpMessageConverterExtractor;
 import org.springframework.web.client.RequestCallback;
@@ -18,7 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
+import java.util.List;
 
 import static com.gooddata.Validate.notNull;
 import static java.lang.String.format;
@@ -60,21 +60,9 @@ public abstract class AbstractService {
         int attempt = 0;
 
         while (true) {
-
-            final ClientHttpResponse response = restTemplate.execute(pollingUri, GET, noopRequestCallback,
-                    reusableResponseExtractor);
-
-            try {
-                if (condition.finished(response)) {
-                    return new HttpMessageConverterExtractor<>(returnClass, restTemplate.getMessageConverters())
-                            .extractData(response);
-                } else if (HttpStatus.Series.CLIENT_ERROR.equals(response.getStatusCode().series())) {
-                    throw new GoodDataException(
-                            format("Polling returned client error HTTP status %s", response.getStatusCode().value())
-                    );
-                }
-            } catch (IOException e) {
-                throw new GoodDataException("I/O error occurred during HTTP response extraction", e);
+            final PollResult<T> result = pollInternal(pollingUri, condition, returnClass);
+            if (!result.isContinue()) {
+                return result.getResult();
             }
 
             try {
@@ -86,14 +74,30 @@ public abstract class AbstractService {
         }
     }
 
-    protected PollFuture<Project> createPollFuture(final String pollingUri, final ConditionCallback condition, final Class<Project> resultClass) {
-        return new PollFuture<>(this, pollingUri, condition, resultClass);
+    protected <T> PollResult<T> pollInternal(String pollingUri, ConditionCallback condition, Class<T> returnClass) {
+        final ClientHttpResponse response = restTemplate.execute(pollingUri, GET, noopRequestCallback,
+                reusableResponseExtractor);
+
+        try {
+            if (condition.finished(response)) {
+                final List<HttpMessageConverter<?>> converters = restTemplate.getMessageConverters();
+                final ResponseExtractor<T> extractor = new HttpMessageConverterExtractor<>(returnClass, converters);
+                final T data = extractor.extractData(response);
+                return PollResult.result(data);
+            } else if (HttpStatus.Series.CLIENT_ERROR.equals(response.getStatusCode().series())) {
+                throw new GoodDataException(
+                        format("Polling returned client error HTTP status %s", response.getStatusCode().value())
+                );
+            }
+        } catch (IOException e) {
+            throw new GoodDataException("I/O error occurred during HTTP response extraction", e);
+        }
+        return PollResult.letsContinue();
     }
 
     protected <T> T extractData(ClientHttpResponse response, Class<T> cls) throws IOException {
         return new HttpMessageConverterExtractor<>(cls, restTemplate.getMessageConverters()).extractData(response);
     }
-
 
     public static interface ConditionCallback {
         boolean finished(ClientHttpResponse response) throws IOException;

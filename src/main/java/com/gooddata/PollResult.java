@@ -26,4 +26,8 @@ class PollResult<T> {
     public static <T> PollResult<T> letsContinue() {
         return (PollResult<T>) CONTINUE;
     }
+
+    public static <T> PollResult<T> result(T result) {
+        return new PollResult<>(result);
+    }
 }
