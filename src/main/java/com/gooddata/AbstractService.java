@@ -19,6 +19,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static com.gooddata.Validate.notNull;
 import static java.lang.String.format;
@@ -56,13 +58,25 @@ public abstract class AbstractService {
         return poll(pollingUri, new StatusOkConditionCallback(), cls);
     }
 
+    @Deprecated // todo remove
     public <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass) {
-        int attempt = 0;
+        try {
+            return poll(pollingUri, condition, returnClass, 0, null);
+        } catch (TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
+    protected <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass, long timeout, TimeUnit unit)
+            throws TimeoutException {
+        final long start = System.currentTimeMillis();
         while (true) {
             final PollResult<T> result = pollInternal(pollingUri, condition, returnClass);
             if (!result.isContinue()) {
                 return result.getResult();
+            }
+            if (unit != null && start + unit.toMillis(timeout) > System.currentTimeMillis()) {
+                throw new TimeoutException();
             }
 
             try {
@@ -70,7 +84,6 @@ public abstract class AbstractService {
             } catch (InterruptedException e) {
                 // do nothing
             }
-            attempt++;
         }
     }
 

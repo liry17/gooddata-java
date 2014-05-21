@@ -41,12 +41,12 @@ public class PollFuture<T> implements Future<T> {
 
     @Override
     public T get() throws InterruptedException, ExecutionException {
-        return null;
+        return service.poll(pollingUri, condition, returnClass);
     }
 
     @Override
     public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        return null;
+        return service.poll(pollingUri, condition, returnClass, timeout, unit);
     }
 
     @Override
