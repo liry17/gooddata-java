@@ -4,8 +4,10 @@
 package com.gooddata.model;
 
 import com.gooddata.AbstractService;
+import com.gooddata.FutureResult;
 import com.gooddata.GoodDataRestException;
 import com.gooddata.project.Project;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -24,24 +26,24 @@ public class ModelService extends AbstractService {
         super(restTemplate);
     }
 
-    public ModelDiff getProjectModelDiff(Project project, DiffRequest diffRequest) {
+    public FutureResult<ModelDiff> getProjectModelDiff(Project project, DiffRequest diffRequest) {
         notNull(project, "project");
         notNull(diffRequest, "diffRequest");
         try {
             final DiffTask diffTask = restTemplate.postForObject(DiffRequest.URI, diffRequest, DiffTask.class, project.getId());
-            return poll(diffTask.getUri(), new StatusOkConditionCallback(), ModelDiff.class);
+            return new FutureResult<>(this, diffTask.getUri(), new StatusOkConditionCallback(), ModelDiff.class);
         } catch (GoodDataRestException | RestClientException e) {
             throw new ModelException("Unable to get project model diff", e);
         }
     }
 
-    public ModelDiff getProjectModelDiff(Project project, String targetModel) {
+    public FutureResult<ModelDiff> getProjectModelDiff(Project project, String targetModel) {
         notNull(project, "project");
         notNull(targetModel, "targetModel");
         return getProjectModelDiff(project, new DiffRequest(targetModel));
     }
 
-    public ModelDiff getProjectModelDiff(Project project, Reader targetModel) {
+    public FutureResult<ModelDiff> getProjectModelDiff(Project project, Reader targetModel) {
         notNull(project, "project");
         notNull(targetModel, "targetModel");
         try {
@@ -61,15 +63,25 @@ public class ModelService extends AbstractService {
         }
     }
 
-    public void updateProjectModel(Project project, String maqlDdl) {
+    public FutureResult<MaqlDdlTaskStatus> updateProjectModel(Project project, String maqlDdl) {
         notNull(project, "project");
         notEmpty(maqlDdl, "maqlDdl");
         try {
             final MaqlDdlLinks linkEntries = restTemplate.postForObject(MaqlDdl.URI, new MaqlDdl(maqlDdl), MaqlDdlLinks.class, project.getId());
-            final MaqlDdlTaskStatus maqlDdlTaskStatus = poll(linkEntries.getStatusLink(), MaqlDdlTaskStatus.class);
-            if (!maqlDdlTaskStatus.isSuccess()) {
-                 throw new ModelException("Update project model finished with status " + maqlDdlTaskStatus.getStatus());
-            }
+            return new FutureResult<>(this, linkEntries.getStatusLink(),
+                    new StatusOkConditionCallback() {
+                        @Override
+                        public boolean finished(final ClientHttpResponse response) throws IOException {
+                            final boolean finished = super.finished(response);
+                            if (finished) {
+                                final MaqlDdlTaskStatus maqlDdlTaskStatus = extractData(response, MaqlDdlTaskStatus.class);
+                                if (!maqlDdlTaskStatus.isSuccess()) {
+                                    throw new ModelException("Update project model finished with status " + maqlDdlTaskStatus.getStatus());
+                                }
+                            }
+                            return finished;
+                        }
+                    }, MaqlDdlTaskStatus.class);
         } catch (GoodDataRestException | RestClientException e) {
             throw new ModelException("Unable to update project model", e);
         }

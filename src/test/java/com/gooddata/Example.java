@@ -31,7 +31,7 @@ public class Example {
         final Collection<Project> projects = projectService.getProjects();
         System.out.println(projects);
 
-        final Project project = projectService.createProject(new Project("sparkling", "pgroup2"));
+        final Project project = projectService.createProject(new Project("sparkling", "pgroup2")).get();
         System.out.println(project.getLinks().getSelf());
 
         final MetadataService md = gd.getMetadataService();

@@ -6,7 +6,7 @@ package com.gooddata.project;
 import com.gooddata.AbstractService;
 import com.gooddata.GoodDataException;
 import com.gooddata.GoodDataRestException;
-import com.gooddata.PollFuture;
+import com.gooddata.FutureResult;
 import com.gooddata.gdc.UriResponse;
 import com.gooddata.account.AccountService;
 import org.springframework.http.HttpStatus;
@@ -16,7 +16,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.concurrent.Future;
 
 import static com.gooddata.Validate.notEmpty;
 import static com.gooddata.Validate.notNull;
@@ -42,23 +41,7 @@ public class ProjectService extends AbstractService {
         }
     }
 
-    public Project createProject(Project project) {
-        notNull(project, "project");
-
-        final UriResponse uri = restTemplate.postForObject(Projects.URI, project, UriResponse.class);
-
-        return poll(uri.getUri(),
-                new ConditionCallback() {
-                    @Override
-                    public boolean finished(ClientHttpResponse response) throws IOException {
-                        final Project project = extractData(response, Project.class);
-                        return "ENABLED".equalsIgnoreCase(project.getContent().getState());
-                    }
-                }, Project.class
-        );
-    }
-
-    public Future<Project> createProjectFuture(Project project) {
+    public FutureResult<Project> createProject(Project project) {
         notNull(project, "project");
 
         final UriResponse uri;
@@ -68,7 +51,7 @@ public class ProjectService extends AbstractService {
             throw new GoodDataException("Unable to crate project", e);
         }
 
-        return new PollFuture<>(this, uri.getUri(), new ConditionCallback() {
+        return new FutureResult<>(this, uri.getUri(), new ConditionCallback() {
             @Override
             public boolean finished(ClientHttpResponse response) throws IOException {
                 final Project project = extractData(response, Project.class);

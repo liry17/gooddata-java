@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import static com.gooddata.Validate.notNull;
 import static java.lang.String.format;
@@ -54,36 +53,26 @@ public abstract class AbstractService {
         this.restTemplate = notNull(restTemplate, "restTemplate");
     }
 
-    public <T> T poll(String pollingUri, Class<T> cls) {
-        return poll(pollingUri, new StatusOkConditionCallback(), cls);
-    }
-
-    @Deprecated // todo remove
-    public <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass) {
-        try {
-            return poll(pollingUri, condition, returnClass, 0, null);
-        } catch (TimeoutException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    protected <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass, long timeout, TimeUnit unit)
-            throws TimeoutException, InterruptedException {
+    protected <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass, long timeout, TimeUnit unit) {
         final long start = System.currentTimeMillis();
         while (true) {
-            final PollResult<T> result = pollInternal(pollingUri, condition, returnClass);
+            final PollResult<T> result = pollOnce(pollingUri, condition, returnClass);
             if (!result.isContinue()) {
                 return result.getResult();
             }
             if (unit != null && start + unit.toMillis(timeout) > System.currentTimeMillis()) {
-                throw new TimeoutException();
+                throw new GoodDataException("timeout");
             }
 
-            Thread.sleep(WAIT_BEFORE_RETRY_IN_MILLIS);
+            try {
+                Thread.sleep(WAIT_BEFORE_RETRY_IN_MILLIS);
+            } catch (InterruptedException e) {
+                throw new GoodDataException("interrupted");
+            }
         }
     }
 
-    protected <T> PollResult<T> pollInternal(String pollingUri, ConditionCallback condition, Class<T> returnClass) {
+    protected <T> PollResult<T> pollOnce(String pollingUri, ConditionCallback condition, Class<T> returnClass) {
         final ClientHttpResponse response = restTemplate.execute(pollingUri, GET, noopRequestCallback,
                 reusableResponseExtractor);
 

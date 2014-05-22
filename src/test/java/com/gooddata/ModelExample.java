@@ -7,8 +7,6 @@ import com.gooddata.model.DiffRequest;
 import com.gooddata.model.ModelDiff;
 import com.gooddata.model.ModelService;
 import com.gooddata.project.Project;
-import org.codehaus.jackson.map.ObjectMapper;
-import java.io.IOException;
 
 /**
  * TODO
@@ -20,7 +18,7 @@ public class ModelExample {
 
         final ModelService modelService = gd.getModelService();
         final Project project = gd.getProjectService().getProjectById("amxhoeyj7oskijld63tajq0o9f4nhxy7");
-        final ModelDiff projectModelDiff = modelService.getProjectModelDiff(project, new DiffRequest(projectModelData));
+        final ModelDiff projectModelDiff = modelService.getProjectModelDiff(project, new DiffRequest(projectModelData)).get();
 
         modelService.updateProjectModel(project, projectModelDiff);
 

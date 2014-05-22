@@ -4,6 +4,7 @@
 package com.gooddata.dataset;
 
 import com.gooddata.AbstractService;
+import com.gooddata.FutureResult;
 import com.gooddata.GoodDataRestException;
 import com.gooddata.gdc.DataStoreException;
 import com.gooddata.gdc.DataStoreService;
@@ -53,7 +54,7 @@ public class DatasetService extends AbstractService {
         }
     }
 
-    public void loadDataset(Project project, DatasetManifest manifest, InputStream dataset) {
+    public FutureResult<PullTaskStatus> loadDataset(final Project project, final DatasetManifest manifest, final InputStream dataset) {
         notNull(project, "project");
         notNull(dataset, "dataset");
         notNull(manifest, "manifest");
@@ -65,33 +66,35 @@ public class DatasetService extends AbstractService {
             dataStoreService.upload(dirPath.resolve(MANIFEST_FILE_NAME).toString(), inputStream);
 
             final PullTask pullTask = restTemplate.postForObject(Pull.URI, new Pull(dirPath.toString()), PullTask.class, project.getId());
-            final PullTaskStatus taskStatus = poll(pullTask.getUri(), new ConditionCallback() {
+            return new FutureResult<>(this, pullTask.getUri(), new ConditionCallback() {
                 @Override
                 public boolean finished(ClientHttpResponse response) throws IOException {
                     final PullTaskStatus status = extractData(response, PullTaskStatus.class);
-                    return status.isFinished();
+                    final boolean finished = status.isFinished();
+                    if (finished && !status.isSuccess()) {
+                        String message = "status: " + status.getStatus();
+                        try {
+                            final InputStream input = dataStoreService.download(dirPath.resolve(STATUS_FILE_NAME).toString());
+                            final FailStatus failStatus = mapper.readValue(input, FailStatus.class);
+                            if (failStatus != null && failStatus.getError() != null) {
+                                message = failStatus.getError().getFormattedMessage();
+                            }
+                        } catch (IOException | DataStoreException ignored) {
+                            // todo log?
+                        }
+                        throw new DatasetException(message, manifest.getDataSet());
+                    }
+                    return finished;
                 }
             }, PullTaskStatus.class);
-            if (!taskStatus.isSuccess()) {
-                String message = "status: " + taskStatus.getStatus();
-                try {
-                    final InputStream input = dataStoreService.download(dirPath.resolve(STATUS_FILE_NAME).toString());
-                    final FailStatus status = mapper.readValue(input, FailStatus.class);
-                    if (status != null && status.getError() != null) {
-                        message = status.getError().getFormattedMessage();
-                    }
-                } catch (IOException | DataStoreException ignored) {
-                    // todo log?
-                }
-                throw new DatasetException(message, manifest.getDataSet());
-            }
         } catch (IOException e) {
             throw new DatasetException("Unable to serialize manifest", manifest.getDataSet(), e);
         } catch (DataStoreException | GoodDataRestException | RestClientException e) {
             throw new DatasetException("Unable to load", manifest.getDataSet(), e);
         } finally {
             try {
-                dataStoreService.delete(dirPath.toString() + "/");
+                // todo this handling should be part of future result
+                //dataStoreService.delete(dirPath.toString() + "/");
             } catch (DataStoreException ignored) {
                 // todo log?
             }
@@ -99,10 +102,10 @@ public class DatasetService extends AbstractService {
 
     }
 
-    public void loadDataset(Project project, String datasetId, InputStream dataset) {
+    public FutureResult<PullTaskStatus> loadDataset(Project project, String datasetId, InputStream dataset) {
         notNull(project, "project");
         notEmpty(datasetId, "datasetId");
         notNull(dataset, "dataset");
-        loadDataset(project, getDatasetManifest(project, datasetId), dataset);
+        return loadDataset(project, getDatasetManifest(project, datasetId), dataset);
     }
 }
