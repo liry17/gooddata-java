@@ -8,7 +8,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.gooddata.Validate.notEmpty;
+import static com.gooddata.Validate.notNull;
+
 /**
+ * Represents the result retrieved by polling on the REST API.
  */
 public class PollFuture<T> implements Future<T> {
 
@@ -18,11 +22,12 @@ public class PollFuture<T> implements Future<T> {
     private final Class<T> returnClass;
     private volatile T result;
 
-    public PollFuture(final AbstractService service, String pollingUri, AbstractService.ConditionCallback condition, Class<T> returnClass) {
-        this.service = service;
-        this.pollingUri = pollingUri;
-        this.condition = condition;
-        this.returnClass = returnClass;
+    public PollFuture(final AbstractService service, final String pollingUri,
+                      final AbstractService.ConditionCallback condition, final Class<T> returnClass) {
+        this.service = notNull(service, "service");
+        this.pollingUri = notEmpty(pollingUri, "pollingUri");
+        this.condition = notNull(condition, "condition");
+        this.returnClass = notNull(returnClass, "returnClass");
     }
 
     @Override
@@ -41,11 +46,17 @@ public class PollFuture<T> implements Future<T> {
 
     @Override
     public T get() throws InterruptedException, ExecutionException {
+        if (result != null) {
+            return result;
+        }
         return service.poll(pollingUri, condition, returnClass);
     }
 
     @Override
-    public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+    public T get(final long timeout, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        if (result != null) {
+            return result;
+        }
         return service.poll(pollingUri, condition, returnClass, timeout, unit);
     }
 
@@ -55,7 +66,11 @@ public class PollFuture<T> implements Future<T> {
     }
 
     @Override
-    public boolean cancel(boolean mayInterruptIfRunning) {
+    public boolean cancel(final boolean mayInterruptIfRunning) {
         throw new UnsupportedOperationException();
+    }
+
+    public String getPollingUri() {
+        return pollingUri;
     }
 }

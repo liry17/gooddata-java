@@ -61,7 +61,12 @@ public class ProjectService extends AbstractService {
     public Future<Project> createProjectFuture(Project project) {
         notNull(project, "project");
 
-        final UriResponse uri = restTemplate.postForObject(Projects.URI, project, UriResponse.class);
+        final UriResponse uri;
+        try {
+            uri = restTemplate.postForObject(Projects.URI, project, UriResponse.class);
+        } catch (GoodDataException | RestClientException e) {
+            throw new GoodDataException("Unable to crate project", e);
+        }
 
         return new PollFuture<>(this, uri.getUri(), new ConditionCallback() {
             @Override

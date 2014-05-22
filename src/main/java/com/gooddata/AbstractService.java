@@ -62,13 +62,13 @@ public abstract class AbstractService {
     public <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass) {
         try {
             return poll(pollingUri, condition, returnClass, 0, null);
-        } catch (TimeoutException e) {
+        } catch (TimeoutException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
 
     protected <T> T poll(String pollingUri, ConditionCallback condition, Class<T> returnClass, long timeout, TimeUnit unit)
-            throws TimeoutException {
+            throws TimeoutException, InterruptedException {
         final long start = System.currentTimeMillis();
         while (true) {
             final PollResult<T> result = pollInternal(pollingUri, condition, returnClass);
@@ -79,11 +79,7 @@ public abstract class AbstractService {
                 throw new TimeoutException();
             }
 
-            try {
-                Thread.sleep(WAIT_BEFORE_RETRY_IN_MILLIS);
-            } catch (InterruptedException e) {
-                // do nothing
-            }
+            Thread.sleep(WAIT_BEFORE_RETRY_IN_MILLIS);
         }
     }
 
