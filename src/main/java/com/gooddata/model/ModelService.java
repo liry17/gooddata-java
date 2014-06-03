@@ -29,7 +29,7 @@ public class ModelService extends AbstractService {
         notNull(diffRequest, "diffRequest");
         try {
             final DiffTask diffTask = restTemplate.postForObject(DiffRequest.URI, diffRequest, DiffTask.class, project.getId());
-            return poll(diffTask.getUri(), new StatusOkConditionCallback(), ModelDiff.class);
+            return poll(diffTask.getPollUri(), new StatusOkConditionCallback(), ModelDiff.class);
         } catch (GoodDataRestException | RestClientException e) {
             throw new ModelException("Unable to get project model diff", e);
         }

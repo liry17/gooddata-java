@@ -4,6 +4,7 @@
 package com.gooddata.account;
 
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
@@ -12,6 +13,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.springframework.web.util.UriTemplate;
 
 /**
+ * Account setting
  */
 @JsonTypeName("accountSetting")
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
@@ -34,25 +36,38 @@ public class Account {
         this.links = links;
     }
 
-    public Links getLinks() {
-        return links;
+    @JsonIgnore
+    public String getSelfLink() {
+        return links.getSelf();
     }
 
+    @JsonIgnore
+    public String getProjectsLink() {
+        return links.getProjects();
+    }
+
+    @JsonIgnore
     public String getId() {
-        return TEMPLATE.match(getLinks().getSelf()).get("id");
+        return TEMPLATE.match(getSelfLink()).get("id");
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Links {
+    private static class Links {
         private final String self;
+        private final String projects;
 
         @JsonCreator
-        public Links(@JsonProperty("self") String self) {
+        public Links(@JsonProperty("self") String self, @JsonProperty("projects") String projects) {
             this.self = self;
+            this.projects = projects;
         }
 
         public String getSelf() {
             return self;
+        }
+
+        public String getProjects() {
+            return projects;
         }
     }
 }

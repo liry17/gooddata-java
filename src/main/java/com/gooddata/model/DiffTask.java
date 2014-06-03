@@ -4,6 +4,7 @@
 package com.gooddata.model;
 
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
@@ -19,23 +20,33 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 public class DiffTask {
 
-    private Link link;
+    @JsonProperty("link")
+    private Link pollLink;
 
     @JsonCreator
-    public DiffTask(@JsonProperty("link") Link link) {
-        this.link = link;
+    public DiffTask(@JsonProperty("link") Link pollLink) {
+        this.pollLink = pollLink;
     }
 
-    public String getUri() {
-        return link.pollUri;
+    @JsonIgnore
+    public String getPollUri() {
+        return pollLink.getPollUri();
     }
 
-    public static class Link {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static class Link {
+
+        @JsonProperty("poll")
         private String pollUri;
 
         @JsonCreator
         public Link(@JsonProperty("poll") String pollUri) {
             this.pollUri = pollUri;
+        }
+
+        @JsonIgnore
+        public String getPollUri() {
+            return pollUri;
         }
     }
 

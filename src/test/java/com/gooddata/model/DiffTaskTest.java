@@ -22,7 +22,7 @@ public class DiffTaskTest {
                 + "        }\n"
                 + "    }\n"
                 + "}", DiffTask.class);
-        assertEquals("/gdc/projects/{project-id}/model/diff/{diff-id}", diffTask.getUri());
+        assertEquals("/gdc/projects/{project-id}/model/diff/{diff-id}", diffTask.getPollUri());
 
 
     }
